@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyz
+*.pyw
+
+# Assets
+/src/assets/
+
+# Virtual Environment
+venv/
+env/
+*.env
+
+# IDE/Editor specific
+.idea/
+.vscode/
+*.sublime-workspace
+*.iml
+
+# Logs
+*.log
+
+# Miscellaneous
+.DS_Store
+node_modules/
+package-lock.json
+yarn.lock
