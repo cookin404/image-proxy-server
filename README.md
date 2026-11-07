@@ -56,7 +56,13 @@ Adjust the port number according to your preference.
 Example:
 GET /proxy?url=https://example.com/image.jpg&width=400&height=300
 
-The server will download the image from the specified URL, resize it to the provided dimensions (if specified), and return the resized or original image.
+The server will download the image from the specified URL, resize it to the provided dimensions (if specified), and return the resized or original image. Each size is cached separately. Resizing needs both `width` and `height`, each from 1 to 4096.
+
+Limits on what the server fetches:
+
+- Only `http` and `https` URLs are accepted.
+- Hosts that resolve to a non-public address (loopback, private networks, link-local, cloud metadata) are refused with `400`. This also applies to every redirect, up to 5 hops.
+- Downloads are limited to 20 MiB and 60 seconds, and the response must be a readable image. Otherwise the server returns `500` and caches nothing.
 
 ### Heartbeat
 
@@ -65,6 +71,13 @@ The server will download the image from the specified URL, resize it to the prov
 A simple endpoint to check if the server is running. It returns an "Alive" response.
 
 GET /heartbeat
+
+## Tests
+
+```
+pip install -r requirements-dev.txt
+pytest
+```
 
 ## License
 

@@ -1,20 +1,58 @@
-import requests
 from flask import send_file
 from PIL import Image
+from urllib.parse import urlsplit
+from Utils.safe_http import BlockedURLError, create_session
 import os
+import tempfile
+import time
+
+ALLOWED_SCHEMES = ('http', 'https')
+REQUEST_TIMEOUT = (5, 15)  # connect, read between bytes
+DOWNLOAD_DEADLINE_SECONDS = 60
+MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
+MODES_JPEG_CANNOT_STORE = ('RGBA', 'LA', 'P', 'PA')
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
 
 
 def download_image(url, file_path):
-    # Send a GET request to the specified URL and save the image to the file path
-    response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'}, stream=True)
-    
-    if response.status_code == 200:
-        with open(file_path, 'wb') as file:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk:
-                    file.write(chunk)
-    else:
-        raise Exception('Failed to fetch the image')
+    # Save the image at url to file_path. The file only appears once it is
+    # complete and verified, so a failed download never ends up in the cache.
+    if urlsplit(url).scheme not in ALLOWED_SCHEMES:
+        raise BlockedURLError(f'Scheme not allowed: {url}')
+
+    descriptor, temp_path = tempfile.mkstemp(dir=os.path.dirname(file_path))
+    try:
+        with os.fdopen(descriptor, 'wb') as file:
+            stream_to_file(url, file)
+
+        with Image.open(temp_path) as image:
+            image.verify()
+
+        os.replace(temp_path, file_path)
+    except Exception:
+        os.remove(temp_path)
+        raise
+
+
+def stream_to_file(url, file):
+    deadline = time.monotonic() + DOWNLOAD_DEADLINE_SECONDS
+    received = 0
+
+    with create_session() as session:
+        response = session.get(
+            url, headers={'User-Agent': USER_AGENT}, stream=True, timeout=REQUEST_TIMEOUT
+        )
+
+        if response.status_code != 200:
+            raise Exception('Failed to fetch the image')
+
+        for chunk in response.iter_content(chunk_size=1024):
+            received += len(chunk)
+            if received > MAX_DOWNLOAD_BYTES:
+                raise Exception('Image is too large')
+            if time.monotonic() >= deadline:
+                raise Exception('Download took too long')
+            file.write(chunk)
 
 
 def get_file_response(file_path):
@@ -24,8 +62,19 @@ def get_file_response(file_path):
     return None
 
 
+def flatten_for_jpeg(image):
+    # JPEG has no alpha channel or palette, so draw these modes onto white
+    if image.mode not in MODES_JPEG_CANNOT_STORE:
+        return image
+
+    rgba = image.convert('RGBA')
+    flattened = Image.new('RGB', rgba.size, 'white')
+    flattened.paste(rgba, mask=rgba.getchannel('A'))
+    return flattened
+
+
 def resize_image(original_path, resized_path, width, height):
     # Open the original image, resize it, and save the resized image to the specified path
     with Image.open(original_path) as image:
-        resized_image = image.resize((width, height))
+        resized_image = flatten_for_jpeg(image).resize((width, height))
         resized_image.save(resized_path, "JPEG")
