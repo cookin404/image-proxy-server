@@ -10,6 +10,7 @@ ALLOWED_SCHEMES = ('http', 'https')
 REQUEST_TIMEOUT = (5, 15)  # connect, read between bytes
 DOWNLOAD_DEADLINE_SECONDS = 60
 MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
+MODES_JPEG_CANNOT_STORE = ('RGBA', 'LA', 'P', 'PA')
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36'
 
 
@@ -61,8 +62,19 @@ def get_file_response(file_path):
     return None
 
 
+def flatten_for_jpeg(image):
+    # JPEG has no alpha channel or palette, so draw these modes onto white
+    if image.mode not in MODES_JPEG_CANNOT_STORE:
+        return image
+
+    rgba = image.convert('RGBA')
+    flattened = Image.new('RGB', rgba.size, 'white')
+    flattened.paste(rgba, mask=rgba.getchannel('A'))
+    return flattened
+
+
 def resize_image(original_path, resized_path, width, height):
     # Open the original image, resize it, and save the resized image to the specified path
     with Image.open(original_path) as image:
-        resized_image = image.resize((width, height))
+        resized_image = flatten_for_jpeg(image).resize((width, height))
         resized_image.save(resized_path, "JPEG")
