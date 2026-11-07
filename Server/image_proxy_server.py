@@ -5,7 +5,7 @@ import hashlib
 import os
 
 app = Flask(__name__)
-PATH_TO_ASSETS = './src/assets/'
+PATH_TO_ASSETS = os.path.join(os.path.abspath('src/assets'), '')
 MAX_DIMENSION = 4096
 
 if not os.path.exists(PATH_TO_ASSETS):

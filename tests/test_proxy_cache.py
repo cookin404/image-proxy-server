@@ -1,3 +1,4 @@
+import os
 from io import BytesIO
 
 import pytest
@@ -64,3 +65,9 @@ def test_invalid_dimensions_are_rejected(client, downloads, width, height):
     )
     assert response.status_code == 400
     assert downloads == []
+
+
+def test_assets_path_is_absolute():
+    # Flask's send_file resolves relative paths against the app's root_path,
+    # not the working directory, so a relative path serves nothing.
+    assert os.path.isabs(image_proxy_server.PATH_TO_ASSETS)
