@@ -1,5 +1,5 @@
 # 0001 — Enforce the SSRF check at connection level
-Date: 2026-11-07 · Status: proposed
+Date: 2026-11-07 · Status: accepted
 
 ## Context
 `/proxy` fetches any URL a client passes in. Once the server is reachable by
@@ -38,8 +38,7 @@ against a real loopback server: if the override stops taking effect,
 `test_loopback_is_never_contacted` fails.
 
 ## Decision
-Pending. The user approved fixing the SSRF issue, but has not yet chosen between
-these options. Option B is what is implemented on `fix/proxy-cache-and-ssrf`.
+Option B, in the user's words: "Ja, Option B".
 
 ## Consequences
 - Rerun the SSRF tests on every urllib3 or requests upgrade.
