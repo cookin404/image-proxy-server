@@ -1,5 +1,6 @@
 from flask import Flask, request, send_file
 from Utils.image_utils import download_image, get_file_response, resize_image
+from Utils.safe_http import BlockedURLError
 
 import hashlib
 import os
@@ -55,6 +56,9 @@ def handle_proxy_request():
             resize_image(original_path, target_path, *size)
 
         return send_file(target_path, mimetype='image/jpeg')
+    except BlockedURLError as e:
+        print(e)
+        return 'URL is not allowed', 400
     except Exception as e:
         print(e)
         return 'Error: Failed to fetch or resize the image', 500
